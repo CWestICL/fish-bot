@@ -19,13 +19,17 @@ def get_fish():
         comname = sciname_div.find("span", {"class": "sheader2"}).text.strip()
         has_name = True
         if not comname:
+            print("No common name found!")
             comname = None
             has_name = False
 
         image_div = soup.find("div", {"id": "ss-photo"})
-        has_image = True
         if not image_div:
             image_div = soup.find("div", {"id": "ss-photo-full"})
+
+        has_image = True
+        if "No image available for this species" in str(soup):
+            print("No image found!")
             has_image = False
 
         image_html = image_div.find("img")
@@ -46,17 +50,17 @@ def get_fish():
 
     
 def get_fish_with_image():
-    print("get_fotd triggered")
     fish = get_fish()
     #if fish["hasName"] and fish["hasImage"]:
     if fish["hasImage"]:
+        print("Fish with image found!")
         return fish
     else:
+        print("Fish has no image! Trying again...")
         return get_fish_with_image()
     
 
 def set_fotd():
-    print("set_fotd triggered")
     global fotd
     fotd = {
         "fish": get_fish_with_image(),
@@ -64,12 +68,12 @@ def set_fotd():
     }
 
 def get_fotd_response():
-    print("get_response triggered")
     global fotd
-    print("before fotd:", fotd)
+    print("Current FotD:", fotd)
     if date.today() != fotd["date"]:
+        ("New day! Getting new FotD...")
         fotd = set_fotd()
-    print("after:", fotd)
+    print("New FotD:", fotd)
     try:
         name = fotd["fish"]["name"]
         species = fotd["fish"]["species"]
