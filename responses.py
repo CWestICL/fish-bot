@@ -78,12 +78,12 @@ def get_fotd_response():
 
         if name:
             return {
-                "message": f"The **Fish of the Day** for {today} is {name} (*{species}*)",
+                "message": f"The Fish of the Day for {today} is **{name}** (*{species}*)",
                 "image": image
             }
         else:
             return {
-                "message": f"The **Fish of the Day** for {today} is *{species}*",
+                "message": f"The Fish of the Day for {today} is *{species}*",
                 "image": image
             }
     
@@ -101,7 +101,7 @@ def get_random_response():
 
         if name:
             return {
-                "message": f"Your random fish is {name} (*{species}*)",
+                "message": f"Your random fish is **{name}** (*{species}*)",
                 "image": image
             }
         else:
