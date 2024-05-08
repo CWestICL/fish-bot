@@ -71,7 +71,7 @@ def get_fotd_response():
     global fotd
     print("Current FotD:", fotd)
     if date.today() != fotd["date"]:
-        ("New day! Getting new FotD...")
+        print("New day! Getting new FotD...")
         fotd = set_fotd()
     print("New FotD:", fotd)
     try:
