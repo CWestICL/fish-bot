@@ -1,8 +1,7 @@
 from bs4 import BeautifulSoup
 import requests
 from datetime import date
-
-fotd = {}
+import config
 
 def get_fish():
     try:
@@ -19,7 +18,7 @@ def get_fish():
         comname = sciname_div.find("span", {"class": "sheader2"}).text.strip()
         has_name = True
         if not comname:
-            print("No common name found!")
+            print("Fish missing common name!")
             comname = None
             has_name = False
 
@@ -28,8 +27,8 @@ def get_fish():
             image_div = soup.find("div", {"id": "ss-photo-full"})
 
         has_image = True
-        if "No image available for this species" in str(soup):
-            print("No image found!")
+        if "No image available for this species" in str(soup.find("div", {"id": "ss-photomap-container"})):
+            print("Fish missing image!")
             has_image = False
 
         image_html = image_div.find("img")
@@ -51,13 +50,15 @@ def get_fish():
     
 def get_fish_with_image():
     fish = get_fish()
-    #if fish["hasName"] and fish["hasImage"]:
-    if fish["hasImage"]:
-        print("Fish with image found!")
-        return fish
-    else:
+    if config.comname_required and not fish["hasName"]:
+        print("Fish has no common name! Trying again...")
+        return get_fish_with_image()
+    elif config.image_required and not fish["hasImage"]:
         print("Fish has no image! Trying again...")
         return get_fish_with_image()
+    else:
+        print("Suitable fish found!")
+        return fish
     
 
 def set_fotd():
@@ -66,14 +67,15 @@ def set_fotd():
         "fish": get_fish_with_image(),
         "date": date.today()
     }
+    print("New FotD:", fotd)
 
 def get_fotd_response():
     global fotd
     print("Current FotD:", fotd)
     if date.today() != fotd["date"]:
         print("New day! Getting new FotD...")
-        fotd = set_fotd()
-    print("New FotD:", fotd)
+        set_fotd()
+
     try:
         name = fotd["fish"]["name"]
         species = fotd["fish"]["species"]
@@ -96,7 +98,7 @@ def get_fotd_response():
         return "Sorry! I can't seem to access the database right now. Please try again later."
     
 
-def get_random_response():
+def get_random_response(user):
     try:
         fish = get_fish_with_image()
         name = fish["name"]
@@ -104,13 +106,18 @@ def get_random_response():
         image = fish["image"]
 
         if name:
+            fish_message = f"**{name}** (*{species}*)"
+        else:
+            fish_message= f"*{species}*"
+        
+        if user:
             return {
-                "message": f"Your random fish is **{name}** (*{species}*)",
+                "message": f"Hi {user}! Your random fish is {fish_message}",
                 "image": image
             }
         else:
             return {
-                "message": f"Your random fish is *{species}*",
+                "message": f"Your random fish is {fish_message}",
                 "image": image
             }
     
@@ -118,11 +125,11 @@ def get_random_response():
         print(e)
         return "Sorry! I can't seem to access the database right now. Please try again later."
     
-def get_response(input: str):
+def get_response(input, user):
     if input[1:] == "fotd":
         return get_fotd_response()
     if input[1:] == "fish":
-        return get_random_response()
+        return get_random_response(user)
     if input[1:] == "fish-help":
         return """
         Hi! I'm the Fish of the Day bot!

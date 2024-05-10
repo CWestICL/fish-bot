@@ -23,9 +23,18 @@ async def send_message(message: Message, user_message: str) -> None:
         is_private = False
     else:
         return
+    
+    print(message.channel)
+    
+    if str(message.channel) == "Direct Message with Unknown User":
+        print("User DMs detected!")
+        username = None
+    else:
+        username = message.author
+
 
     try:
-        response = get_response(user_message)
+        response = get_response(user_message, username)
         if type(response) == dict:
             message_text = response["message"]
             image = response["image"]
