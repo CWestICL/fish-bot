@@ -112,7 +112,7 @@ def get_random_response(user):
         
         if user:
             return {
-                "message": f"Hi {user}! Your random fish is {fish_message}",
+                "message": f"Hi <@{user}>! Your random fish is {fish_message}",
                 "image": image
             }
         else:

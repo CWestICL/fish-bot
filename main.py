@@ -30,7 +30,7 @@ async def send_message(message: Message, user_message: str) -> None:
         print("User DMs detected!")
         username = None
     else:
-        username = message.author
+        username = message.author.id
 
 
     try:
