@@ -48,12 +48,18 @@ def get_fish():
         print(e)
 
     
-def get_fish_with_image():
+def get_fish_with_image(isFotd):
     fish = get_fish()
-    if config.comname_required and not fish["hasName"]:
+    if isFotd and config.comname_required_fotd and not fish["hasName"]:
         print("Fish has no common name! Trying again...")
         return get_fish_with_image()
-    elif config.image_required and not fish["hasImage"]:
+    elif isFotd and config.image_required_fotd and not fish["hasImage"]:
+        print("Fish has no image! Trying again...")
+        return get_fish_with_image()
+    elif not isFotd and config.comname_required_fish and not fish["hasName"]:
+        print("Fish has no common name! Trying again...")
+        return get_fish_with_image()
+    elif not isFotd and config.image_required_fish and not fish["hasImage"]:
         print("Fish has no image! Trying again...")
         return get_fish_with_image()
     else:
@@ -64,7 +70,7 @@ def get_fish_with_image():
 def set_fotd():
     global fotd
     fotd = {
-        "fish": get_fish_with_image(),
+        "fish": get_fish_with_image(True),
         "date": date.today()
     }
     print("New FotD:", fotd)
@@ -99,8 +105,13 @@ def get_fotd_response():
     
 
 def get_random_response(user):
+    if not config.fish_enabled:
+        return {
+            "message": "Sorry! The !fish command is not enabled at the moment.",
+            "image": image
+        }
     try:
-        fish = get_fish_with_image()
+        fish = get_fish_with_image(False)
         name = fish["name"]
         species = fish["species"]
         image = fish["image"]
