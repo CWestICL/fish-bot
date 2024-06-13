@@ -106,10 +106,7 @@ def get_fotd_response():
 
 def get_random_response(user):
     if not config.fish_enabled:
-        return {
-            "message": "Sorry! The !fish command is not enabled at the moment.",
-            "image": image
-        }
+        return "Sorry! The !fish command is not enabled at the moment."
     try:
         fish = get_fish_with_image(False)
         name = fish["name"]
