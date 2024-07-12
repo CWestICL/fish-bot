@@ -35,12 +35,32 @@ def get_fish():
         image_url = image_html["src"]
         image = f"https://www.fishbase.se{image_url}"
 
+        genus_divs = soup.find_all("div", {"class": "smallSpace"})
+        genus_div = None
+        genus = None
+        for div in genus_divs:
+            if "Etymology:" in div.text.strip():
+                genus_div = div
+        
+        if genus_div:
+            genus_div_str = genus_div.text.strip()
+
+            genus_div_str = genus_div_str.replace("(","*(")
+            genus_div_str = genus_div_str.replace(")",")*")
+            x = genus_div_str.split("*")
+            res = []
+            for i in x:
+                if i.startswith("(") and i.endswith(")") and not i.startswith("(Ref"):
+                    res.append(i[1:-1])
+            genus = res[-1]
+
         fish = {
             "species": sciname,
             "hasName": has_name,
             "name": comname,
             "hasImage": has_image,
-            "image": image
+            "image": image,
+            "genus": genus,
         }
         print("Fish:",fish)
         return fish
@@ -86,6 +106,7 @@ def get_fotd_response():
         name = fotd["fish"]["name"]
         species = fotd["fish"]["species"]
         image = fotd["fish"]["image"]
+        genus = fotd["fish"]["genus"]
         today = fotd["date"]
 
         if name:
@@ -94,10 +115,16 @@ def get_fotd_response():
                 "image": image
             }
         else:
-            return {
-                "message": f"The Fish of the Day for {today} is *{species}*",
-                "image": image
-            }
+            if genus:
+                return {
+                    "message": f"The Fish of the Day for {today} is *{species}*, from the family **{genus}**",
+                    "image": image
+                }
+            else:
+                return {
+                    "message": f"The Fish of the Day for {today} is *{species}*",
+                    "image": image
+                }
     
     except Exception as e:
         print(e)
@@ -112,11 +139,15 @@ def get_random_response(user):
         name = fish["name"]
         species = fish["species"]
         image = fish["image"]
+        genus = fish["genus"]
 
         if name:
             fish_message = f"**{name}** (*{species}*)"
         else:
-            fish_message= f"*{species}*"
+            if genus:
+                fish_message= f"*{species}*, from the family **{genus}**"
+            else:
+                fish_message= f"*{species}*"
         
         if user:
             return {
@@ -150,4 +181,6 @@ Be patient, it sometime takes me a little while to find a suitable fish!
 
 The database I use can be found at https://www.fishbase.se/
 """
-    
+
+if __name__ == '__main__':
+    print(get_fish())
