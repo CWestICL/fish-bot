@@ -62,26 +62,28 @@ def get_fish():
             "image": image,
             "genus": genus,
         }
-        print("Fish:",fish)
+        print(f"Fish: {fish}")
         return fish
     except Exception as e:
-        print(e)
+        print(f"Error: {e}")
+        if str(e).startswith("HTTPS"):
+            raise Exception("HTTPS Error")
 
     
 def get_fish_with_image(isFotd):
     fish = get_fish()
     if isFotd and config.comname_required_fotd and not fish["hasName"]:
         print("Fish has no common name! Trying again...")
-        return get_fish_with_image()
+        return get_fish_with_image(isFotd)
     elif isFotd and config.image_required_fotd and not fish["hasImage"]:
         print("Fish has no image! Trying again...")
-        return get_fish_with_image()
+        return get_fish_with_image(isFotd)
     elif not isFotd and config.comname_required_fish and not fish["hasName"]:
         print("Fish has no common name! Trying again...")
-        return get_fish_with_image()
+        return get_fish_with_image(isFotd)
     elif not isFotd and config.image_required_fish and not fish["hasImage"]:
         print("Fish has no image! Trying again...")
-        return get_fish_with_image()
+        return get_fish_with_image(isFotd)
     else:
         print("Suitable fish found!")
         return fish
@@ -89,17 +91,24 @@ def get_fish_with_image(isFotd):
 
 def set_fotd():
     global fotd
-    fotd = {
-        "fish": get_fish_with_image(True),
-        "date": date.today()
-    }
-    print("New FotD:", fotd)
+    try:
+        fotd = {
+            "fish": get_fish_with_image(True),
+            "date": date.today()
+        }
+        print(f"New FotD: {fotd}")
+    except:
+        fotd = {
+            "fish": None,
+            "date": None
+        }
+        print("FOTD couldn't be set at startup.")
 
 def get_fotd_response():
     global fotd
-    print("Current FotD:", fotd)
-    if date.today() != fotd["date"]:
-        print("New day! Getting new FotD...")
+    print(f"Current FotD: {fotd}")
+    if date.today() != fotd["date"] or not fotd["fish"]:
+        print("Getting new FotD...")
         set_fotd()
 
     try:
@@ -127,8 +136,10 @@ def get_fotd_response():
                 }
     
     except Exception as e:
-        print(e)
-        return "Sorry! I can't seem to access the database right now. Please try again later."
+        if str(e).startswith("HTTPS"):
+            return "Sorry! I can't seem to access the database right now. Please try again later."
+        else:
+            return "Sorry! There was an internal error handling your request."
     
 
 def get_random_response(user):
@@ -161,8 +172,10 @@ def get_random_response(user):
             }
     
     except Exception as e:
-        print(e)
-        return "Sorry! I can't seem to access the database right now. Please try again later."
+        if str(e).startswith("HTTPS"):
+            return "Sorry! I can't seem to access the database right now. Please try again later."
+        else:
+            return "Sorry! There was an internal error handling your request."
     
 def get_response(input, user):
     if input[1:] == "fotd":
