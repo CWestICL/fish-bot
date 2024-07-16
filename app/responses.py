@@ -1,7 +1,9 @@
 from bs4 import BeautifulSoup
 import requests
 from datetime import date
+from dateutil import parser 
 import config
+import json
 
 def get_fish():
     try:
@@ -90,28 +92,49 @@ def get_fish_with_image(isFotd):
     
 
 def set_fotd():
-    global fotd
     try:
         fotd = {
             "fish": get_fish_with_image(True),
-            "date": date.today()
+            "date": date.today().strftime("%b %d %Y")
         }
         print(f"New FotD: {fotd}")
-    except:
+    except Exception as e:
+        print(f"Error: {e}")
         fotd = {
             "fish": None,
             "date": None
         }
         print("FOTD couldn't be set at startup.")
 
-def get_fotd_response():
-    global fotd
-    print(f"Current FotD: {fotd}")
-    if date.today() != fotd["date"] or not fotd["fish"]:
-        print("Getting new FotD...")
-        set_fotd()
+    write_fotd_json(fotd)
+    return fotd
 
+
+def write_fotd_json(fotd):
+    with open("fotd.json", "w") as outfile:
+        json.dump(fotd, outfile)
+
+
+def read_fotd_json():
+    with open("fotd.json", "r") as openfile:
+        json_obj = json.load(openfile)
+    return json_obj
+
+
+def get_fotd_response():
     try:
+        fotd = read_fotd_json()
+        print(f"Current FotD: {fotd}")
+        if not fotd["fish"] or not fotd["date"]:
+            print("No FotD set! Getting new FotD...")
+            fotd = set_fotd()
+        
+        fotd_date = parser.parse(fotd["date"])
+
+        if date.today() != fotd_date.date() or not fotd["fish"]:
+            print("Date mismatch! Getting new FotD...")
+            fotd = set_fotd()
+
         name = fotd["fish"]["name"]
         species = fotd["fish"]["species"]
         image = fotd["fish"]["image"]
@@ -196,4 +219,4 @@ The database I use can be found at https://www.fishbase.se/
 """
 
 if __name__ == '__main__':
-    print(get_fish())
+    print(get_fotd_response())
