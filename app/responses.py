@@ -45,7 +45,8 @@ def get_fish():
                 genus_div = div
         
         if genus_div:
-            genus_div_str = genus_div.text.strip()
+            genus_div_str = genus_div.text.strip().split("Etymology:")[0]
+            print(f"HTML: {genus_div_str}")
 
             genus_div_str = genus_div_str.replace("(","*(")
             genus_div_str = genus_div_str.replace(")",")*")
@@ -55,6 +56,7 @@ def get_fish():
                 if i.startswith("(") and i.endswith(")") and not i.startswith("(Ref"):
                     res.append(i[1:-1])
             genus = res[-1]
+            print(f"Genus: {genus}")
 
         fish = {
             "species": sciname,
