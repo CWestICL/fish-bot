@@ -141,7 +141,12 @@ def get_fotd_response():
         genus = fotd["fish"]["genus"]
         today = fotd["date"]
 
-        if name:
+        if name.lower() == "whale shark":
+            return {
+                "message": f"It actually happened! The Fish of the Day for {today} is **{name}** (*{species}*)",
+                "image": image
+            }
+        elif name:
             return {
                 "message": f"The Fish of the Day for {today} is **{name}** (*{species}*)",
                 "image": image
@@ -184,15 +189,27 @@ def get_random_response(user):
                 fish_message= f"*{species}*"
         
         if user:
-            return {
-                "message": f"Hi <@{user}>! Your random fish is {fish_message}",
-                "image": image
-            }
+            if name.lower() == "whale shark":
+                return {
+                    "message": f"Hi <@{user}>! You actually did it! Your random fish is {fish_message}",
+                    "image": image
+                }
+            else:
+                return {
+                    "message": f"Hi <@{user}>! Your random fish is {fish_message}",
+                    "image": image
+                }
         else:
-            return {
-                "message": f"Your random fish is {fish_message}",
-                "image": image
-            }
+            if name.lower() == "whale shark":
+                return {
+                    "message": f"No one will believe you! Your random fish is {fish_message}",
+                    "image": image
+                }
+            else:
+                return {
+                    "message": f"Your random fish is {fish_message}",
+                    "image": image
+                }
     
     except Exception as e:
         if str(e).startswith("HTTPS"):
@@ -219,5 +236,8 @@ The database I use can be found at https://www.fishbase.se/
 """
 
 if __name__ == '__main__':
-    set_fotd()
+    try:
+        read_fotd_json()
+    except:
+        set_fotd()
     print(get_fotd_response())
