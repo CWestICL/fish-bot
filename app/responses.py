@@ -219,4 +219,5 @@ The database I use can be found at https://www.fishbase.se/
 """
 
 if __name__ == '__main__':
+    set_fotd()
     print(get_fotd_response())
