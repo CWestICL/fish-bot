@@ -166,6 +166,7 @@ def get_fotd_response():
                 }
     
     except Exception as e:
+        print(f"Error: {e}")
         if str(e).startswith("HTTPS"):
             return "Sorry! I can't seem to access the database right now. Please try again later."
         else:
@@ -214,6 +215,7 @@ def get_random_response(user):
                 }
     
     except Exception as e:
+        print(f"Error: {e}")
         if str(e).startswith("HTTPS"):
             return "Sorry! I can't seem to access the database right now. Please try again later."
         else:
