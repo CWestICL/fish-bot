@@ -74,20 +74,20 @@ def get_fish():
             raise Exception("HTTPS Error")
 
     
-def get_fish_with_image(isFotd):
+def get_suitable_fish(isFotd):
     fish = get_fish()
     if isFotd and config.comname_required_fotd and not fish["hasName"]:
         print("Fish has no common name! Trying again...")
-        return get_fish_with_image(isFotd)
+        return get_suitable_fish(isFotd)
     elif isFotd and config.image_required_fotd and not fish["hasImage"]:
         print("Fish has no image! Trying again...")
-        return get_fish_with_image(isFotd)
+        return get_suitable_fish(isFotd)
     elif not isFotd and config.comname_required_fish and not fish["hasName"]:
         print("Fish has no common name! Trying again...")
-        return get_fish_with_image(isFotd)
+        return get_suitable_fish(isFotd)
     elif not isFotd and config.image_required_fish and not fish["hasImage"]:
         print("Fish has no image! Trying again...")
-        return get_fish_with_image(isFotd)
+        return get_suitable_fish(isFotd)
     else:
         print("Suitable fish found!")
         return fish
@@ -95,18 +95,35 @@ def get_fish_with_image(isFotd):
 
 def set_fotd():
     try:
-        fotd = {
-            "fish": get_fish_with_image(True),
-            "date": date.today().strftime("%b %d %Y")
-        }
-        print(f"New FotD: {fotd}")
+        fotd = read_fotd_json()
+        print(f"Current FotD: {fotd}")
+        if not fotd["fish"] or not fotd["date"]:
+            print("No FotD set! Getting new FotD...")
+            fotd = set_fotd()
+        
+        fotd_date = parser.parse(fotd["date"])
+
+        if date.today() != fotd_date.date() or not fotd["fish"]:
+            print("Date mismatch! Getting new FotD...")
+            fotd = set_fotd()
+            
     except Exception as e:
         print(f"Error: {e}")
-        fotd = {
-            "fish": None,
-            "date": None
-        }
-        print("FOTD couldn't be set at startup.")
+        print(f"No json file found, generating new fish...")
+    
+        try:
+            fotd = {
+                "fish": get_suitable_fish(True),
+                "date": date.today().strftime("%b %d %Y")
+            }
+            print(f"New FotD: {fotd}")
+        except Exception as e:
+            print(f"Error: {e}")
+            fotd = {
+                "fish": None,
+                "date": None
+            }
+            print("FOTD couldn't be set at startup.")
 
     write_fotd_json(fotd)
     return fotd
@@ -125,25 +142,15 @@ def read_fotd_json():
 
 def get_fotd_response():
     try:
-        fotd = read_fotd_json()
-        print(f"Current FotD: {fotd}")
-        if not fotd["fish"] or not fotd["date"]:
-            print("No FotD set! Getting new FotD...")
-            fotd = set_fotd()
-        
-        fotd_date = parser.parse(fotd["date"])
-
-        if date.today() != fotd_date.date() or not fotd["fish"]:
-            print("Date mismatch! Getting new FotD...")
-            fotd = set_fotd()
+        fotd = set_fotd()
 
         name = fotd["fish"]["name"]
         species = fotd["fish"]["species"]
         image = fotd["fish"]["image"]
         genus = fotd["fish"]["genus"]
-        today = fotd["date"]
+        today = parser.parse(fotd["date"]).date()
 
-        if name.lower() == "whale shark":
+        if name and name.lower() == "whale shark":
             return {
                 "message": f"It actually happened! The Fish of the Day for {today} is **{name}** (*{species}*)",
                 "image": image
@@ -177,7 +184,7 @@ def get_random_response(user):
     if not config.fish_enabled:
         return "Sorry! The !fish command is not enabled at the moment."
     try:
-        fish = get_fish_with_image(False)
+        fish = get_suitable_fish(False)
         name = fish["name"]
         species = fish["species"]
         image = fish["image"]
