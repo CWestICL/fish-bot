@@ -106,7 +106,7 @@ def set_fotd():
         if date.today() != fotd_date.date() or not fotd["fish"]:
             print("Date mismatch! Getting new FotD...")
             fotd = set_fotd()
-            
+
     except Exception as e:
         print(f"Error: {e}")
         print(f"No json file found, generating new fish...")
@@ -199,7 +199,7 @@ def get_random_response(user):
                 fish_message= f"*{species}*"
         
         if user:
-            if name.lower() == "whale shark":
+            if name and name.lower() == "whale shark":
                 return {
                     "message": f"Hi <@{user}>! You actually did it! Your random fish is {fish_message}",
                     "image": image
@@ -210,7 +210,7 @@ def get_random_response(user):
                     "image": image
                 }
         else:
-            if name.lower() == "whale shark":
+            if name and name.lower() == "whale shark":
                 return {
                     "message": f"No one will believe you! Your random fish is {fish_message}",
                     "image": image
