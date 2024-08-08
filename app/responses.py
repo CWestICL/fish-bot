@@ -4,12 +4,16 @@ from datetime import date
 from dateutil import parser 
 import config
 import json
+import logging
+
+logging.basicConfig(level=logging.INFO, filename="fishbot.log", filemode="w", format="%(asctime)s - %(levelname)s - %(message)s")
+log = logging.getLogger(__name__)
 
 def get_fish():
     try:
-        print("Making a request...")
+        log.debug("Making a request...")
         fish_page = requests.get("https://www.fishbase.se/summary/RandomSpecies.php")
-        print(fish_page)
+        log.debug(f"Response: {fish_page}")
 
         soup = BeautifulSoup(fish_page.text, "html.parser")
 
@@ -20,7 +24,7 @@ def get_fish():
         comname = sciname_div.find("span", {"class": "sheader2"}).text.strip()
         has_name = True
         if not comname:
-            print("Fish missing common name!")
+            log.debug("Fish missing common name!")
             comname = None
             has_name = False
 
@@ -30,7 +34,7 @@ def get_fish():
 
         has_image = True
         if "No image available for this species" in str(soup.find("div", {"id": "ss-photomap-container"})):
-            print("Fish missing image!")
+            log.debug("Fish missing image!")
             has_image = False
 
         image_html = image_div.find("img")
@@ -46,7 +50,7 @@ def get_fish():
         
         if genus_div:
             genus_div_str = genus_div.text.strip().split("Etymology:")[0]
-            print(f"HTML: {genus_div_str}")
+            log.debug(f"HTML: {genus_div_str}")
 
             genus_div_str = genus_div_str.replace("(","*(")
             genus_div_str = genus_div_str.replace(")",")*")
@@ -56,7 +60,7 @@ def get_fish():
                 if i.startswith("(") and i.endswith(")") and not i.startswith("(Ref"):
                     res.append(i[1:-1])
             genus = res[-1]
-            print(f"Genus: {genus}")
+            log.debug(f"Genus: {genus}")
 
         fish = {
             "species": sciname,
@@ -66,10 +70,10 @@ def get_fish():
             "image": image,
             "genus": genus,
         }
-        print(f"Fish: {fish}")
+        log.info(f"Fish: {fish}")
         return fish
     except Exception as e:
-        print(f"Error: {e}")
+        log.error(e)
         if str(e).startswith("HTTPS"):
             raise Exception("HTTPS Error")
 
@@ -77,54 +81,56 @@ def get_fish():
 def get_suitable_fish(isFotd):
     fish = get_fish()
     if isFotd and config.comname_required_fotd and not fish["hasName"]:
-        print("Fish has no common name! Trying again...")
+        log.info("Fish has no common name! Trying again...")
         return get_suitable_fish(isFotd)
     elif isFotd and config.image_required_fotd and not fish["hasImage"]:
-        print("Fish has no image! Trying again...")
+        log.info("Fish has no image! Trying again...")
         return get_suitable_fish(isFotd)
     elif not isFotd and config.comname_required_fish and not fish["hasName"]:
-        print("Fish has no common name! Trying again...")
+        log.info("Fish has no common name! Trying again...")
         return get_suitable_fish(isFotd)
     elif not isFotd and config.image_required_fish and not fish["hasImage"]:
-        print("Fish has no image! Trying again...")
+        log.info("Fish has no image! Trying again...")
         return get_suitable_fish(isFotd)
     else:
-        print("Suitable fish found!")
+        log.info("Suitable fish found!")
         return fish
+    
+
+def get_fotd():
+    try:
+        fotd = {
+            "fish": get_suitable_fish(True),
+            "date": date.today().strftime("%b %d %Y")
+        }
+        log.debug(f"New FotD: {fotd}")
+    except Exception as e:
+        log.error(e)
+        if str(e).startswith("HTTPS"):
+            raise Exception('HTTPS error')
+
+    return fotd
     
 
 def set_fotd():
     try:
         fotd = read_fotd_json()
-        print(f"Current FotD: {fotd}")
+        log.info(f"Loaded FotD from JSON: {fotd}")
         if not fotd["fish"] or not fotd["date"]:
-            print("No FotD set! Getting new FotD...")
-            fotd = set_fotd()
+            log.info("No FotD set! Getting new FotD...")
+            fotd = get_fotd()
         
         fotd_date = parser.parse(fotd["date"])
 
         if date.today() != fotd_date.date() or not fotd["fish"]:
-            print("Date mismatch! Getting new FotD...")
-            fotd = set_fotd()
+            log.info("Date mismatch! Getting new FotD...")
+            fotd = get_fotd()
 
     except Exception as e:
-        print(f"Error: {e}")
-        print(f"No json file found, generating new fish...")
+        log.error(f"Error: {e}")
+        log.info(f"No json file found, generating new fish...")
+        fotd = get_fotd()
     
-        try:
-            fotd = {
-                "fish": get_suitable_fish(True),
-                "date": date.today().strftime("%b %d %Y")
-            }
-            print(f"New FotD: {fotd}")
-        except Exception as e:
-            print(f"Error: {e}")
-            fotd = {
-                "fish": None,
-                "date": None
-            }
-            print("FOTD couldn't be set at startup.")
-
     write_fotd_json(fotd)
     return fotd
 
@@ -173,7 +179,7 @@ def get_fotd_response():
                 }
     
     except Exception as e:
-        print(f"Error: {e}")
+        log.error(f"Error: {e}")
         if str(e).startswith("HTTPS"):
             return "Sorry! I can't seem to access the database right now. Please try again later."
         else:
@@ -222,7 +228,7 @@ def get_random_response(user):
                 }
     
     except Exception as e:
-        print(f"Error: {e}")
+        log.error(f"Error: {e}")
         if str(e).startswith("HTTPS"):
             return "Sorry! I can't seem to access the database right now. Please try again later."
         else:

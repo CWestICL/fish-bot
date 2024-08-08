@@ -1,5 +1,6 @@
 from typing import Final
 import os
+import logging
 from dotenv import load_dotenv
 import aiohttp
 import io
@@ -15,7 +16,7 @@ client: Client = Client(intents=intents)
 
 async def send_message(message: Message, user_message: str) -> None:
     if not user_message:
-        print("Message was empty!")
+        logging.debug("Message was empty!")
 
     if user_message[0] == "?":
         is_private = True
@@ -24,10 +25,10 @@ async def send_message(message: Message, user_message: str) -> None:
     else:
         return
     
-    print(message.channel)
+    logging.info(f"Channel: {message.channel}")
     
     if str(message.channel) == "Direct Message with Unknown User":
-        print("User DMs detected!")
+        logging.debug("User DMs detected!")
         username = None
     else:
         username = message.author.id
@@ -49,13 +50,12 @@ async def send_message(message: Message, user_message: str) -> None:
             await message.author.send(response) if is_private else await message.channel.send(response)
 
     except Exception as e:
-        print(e)
+        logging.error(e)
 
 
 @client.event
 async def on_ready() -> None:
-    print(f"{client.user} is now running!")
-    set_fotd()
+    logging.info(f"{client.user} is now running!")
 
 
 @client.event
@@ -67,7 +67,7 @@ async def on_message(message: Message) -> None:
     user_message: str = message.content
     channel: str = str(message.channel)
 
-    print(f"[{channel}] {username}: '{user_message}'")
+    # log.debug(f"[{channel}] {username}: '{user_message}'")
     await send_message(message, user_message)
 
 def main() -> None:
