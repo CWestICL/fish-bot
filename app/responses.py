@@ -12,86 +12,44 @@ log = logging.getLogger(__name__)
 def get_fish():
     try:
         log.debug("Making a request...")
-        fish_page = requests.get("https://www.fishbase.se/summary/RandomSpecies.php")
-        log.debug(f"Response: {fish_page}")
+        url = f"{config.api_url}/random"
+        params = dict(
+            requireName = config.common_name_required,
+            requireImage = config.image_required
+        )
+        req = requests.get(url=url, params=params)
+        log.debug(f"Response: {req}")
 
-        soup = BeautifulSoup(fish_page.text, "html.parser")
+        data = req.json()
 
-        sciname_div = soup.find("div", {"id": "ss-sciname"})
-        sciname_parts = sciname_div.findAll("a")
-        sciname = f"{sciname_parts[0].text} {sciname_parts[1].text}"
-
-        comname = sciname_div.find("span", {"class": "sheader2"}).text.strip()
-        has_name = True
-        if not comname:
-            log.debug("Fish missing common name!")
-            comname = None
-            has_name = False
-
-        image_div = soup.find("div", {"id": "ss-photo"})
-        if not image_div:
-            image_div = soup.find("div", {"id": "ss-photo-full"})
-
-        has_image = True
-        if "No image available for this species" in str(soup.find("div", {"id": "ss-photomap-container"})):
-            log.debug("Fish missing image!")
-            has_image = False
-
-        image_html = image_div.find("img")
-        image_url = image_html["src"]
-        image = f"https://www.fishbase.se{image_url}"
-
-        genus_divs = soup.find_all("div", {"class": "smallSpace"})
-        genus_div = None
-        genus = None
-        for div in genus_divs:
-            if "Etymology:" in div.text.strip():
-                genus_div = div
-        
-        if genus_div:
-            genus_div_str = genus_div.text.strip().split("Etymology:")[0]
-            log.debug(f"HTML: {genus_div_str}")
-
-            genus_div_str = genus_div_str.replace("(","*(")
-            genus_div_str = genus_div_str.replace(")",")*")
-            x = genus_div_str.split("*")
-            res = []
-            for i in x:
-                if i.startswith("(") and i.endswith(")") and not i.startswith("(Ref"):
-                    res.append(i[1:-1])
-            genus = res[-1]
-            log.debug(f"Genus: {genus}")
-
+        log.debug(f"Data: {data}")
+    
         fish = {
-            "species": sciname,
-            "hasName": has_name,
-            "name": comname,
-            "hasImage": has_image,
-            "image": image,
-            "genus": genus,
+            "species": f"{data['genus']} {data['species']}",
+            "name": data['name'],
+            "image": f"{config.api_url}{data['imageUrl']}",
+            "genus": data['familyCommonName'],
         }
+        if not data['name']:
+            fish['name'] = None
+        if not data['imageUrl']:
+            fish['image'] = None
         log.info(f"Fish: {fish}")
         return fish
     except Exception as e:
-        log.error(e)
+        log.error(f"get_fish: {e}")
         if str(e).startswith("HTTPS"):
             raise Exception("HTTPS Error")
 
     
-def get_suitable_fish(isFotd):
+def get_suitable_fish():
     fish = get_fish()
-    if isFotd and config.comname_required_fotd and not fish["hasName"]:
+    if config.comname_required and not fish["hasName"]:
         log.info("Fish has no common name! Trying again...")
-        return get_suitable_fish(isFotd)
-    elif isFotd and config.image_required_fotd and not fish["hasImage"]:
+        return get_suitable_fish()
+    elif config.image_required and not fish["hasImage"]:
         log.info("Fish has no image! Trying again...")
-        return get_suitable_fish(isFotd)
-    elif not isFotd and config.comname_required_fish and not fish["hasName"]:
-        log.info("Fish has no common name! Trying again...")
-        return get_suitable_fish(isFotd)
-    elif not isFotd and config.image_required_fish and not fish["hasImage"]:
-        log.info("Fish has no image! Trying again...")
-        return get_suitable_fish(isFotd)
+        return get_suitable_fish()
     else:
         log.info("Suitable fish found!")
         return fish
@@ -100,55 +58,73 @@ def get_suitable_fish(isFotd):
 def get_fotd():
     try:
         fotd = {
-            "fish": get_suitable_fish(True),
+            "fish": get_fish(),
             "date": date.today().strftime("%b %d %Y")
         }
         log.debug(f"New FotD: {fotd}")
     except Exception as e:
-        log.error(e)
+        log.error(f"get_fotd: {e}")
         if str(e).startswith("HTTPS"):
             raise Exception('HTTPS error')
 
     return fotd
     
 
-def set_fotd():
+def set_fotd(owner):
     try:
-        fotd = read_fotd_json()
-        log.info(f"Loaded FotD from JSON: {fotd}")
-        if not fotd["fish"] or not fotd["date"]:
-            log.info("No FotD set! Getting new FotD...")
+        if read_fotd_json():
+            data = read_fotd_json()
+            log.info(f"Loaded FotD from JSON: {data}")
+            if owner not in data:
+                log.info(f"No FotD set for {owner}! Getting new FotD...")
+                fotd = get_fotd()
+            elif not data[owner]['fish'] or not data[owner]['date']:
+                log.info(f"No suitable FotD set for {owner}! Getting new FotD...")
+                fotd = get_fotd()
+            else:
+                fotd_date = parser.parse(data[owner]["date"])
+                if date.today() != fotd_date.date():
+                    log.info("Date mismatch! Getting new FotD...")
+                    fotd = get_fotd()
+                else:
+                    fotd = data[owner]
+        else:
+            log.info(f"No json file found, generating new fish...")
             fotd = get_fotd()
-        
-        fotd_date = parser.parse(fotd["date"])
 
-        if date.today() != fotd_date.date() or not fotd["fish"]:
-            log.info("Date mismatch! Getting new FotD...")
-            fotd = get_fotd()
+        write_fotd_json(owner, fotd)
+        return fotd
 
     except Exception as e:
-        log.error(f"Error: {e}")
-        log.info(f"No json file found, generating new fish...")
-        fotd = get_fotd()
-    
-    write_fotd_json(fotd)
-    return fotd
+        log.error(f"set_fotd: {e}")
 
 
-def write_fotd_json(fotd):
+def write_fotd_json(owner, fotd):
+    if read_fotd_json():
+        fish_dict = read_fotd_json()
+    else:
+        fish_dict = {}
+    fish_dict[owner] = fotd
     with open("fotd.json", "w") as outfile:
-        json.dump(fotd, outfile)
+        json.dump(fish_dict, outfile)
 
 
 def read_fotd_json():
-    with open("fotd.json", "r") as openfile:
-        json_obj = json.load(openfile)
-    return json_obj
-
-
-def get_fotd_response():
     try:
-        fotd = set_fotd()
+        with open("fotd.json", "r") as openfile:
+            json_obj = json.load(openfile)
+        return json_obj
+    except Exception as e:
+        log.error(f"read_fotd_json: {e}")
+        return None
+
+
+
+def get_fotd_response(user):
+    if not user:
+        user = 'fishbot'
+    try:
+        fotd = set_fotd(str(user))
 
         name = fotd["fish"]["name"]
         species = fotd["fish"]["species"]
@@ -156,93 +132,39 @@ def get_fotd_response():
         genus = fotd["fish"]["genus"]
         today = parser.parse(fotd["date"]).date()
 
-        if name and name.lower() == "whale shark":
-            return {
-                "message": f"It actually happened! The Fish of the Day for {today} is **{name}** (*{species}*)",
-                "image": image
-            }
-        elif name:
-            return {
-                "message": f"The Fish of the Day for {today} is **{name}** (*{species}*)",
-                "image": image
-            }
+        if user != 'fishbot':
+            msg_start = f"Hi <@{user}>! Your personal"
         else:
-            if genus:
-                return {
-                    "message": f"The Fish of the Day for {today} is *{species}*, from the family **{genus}**",
-                    "image": image
-                }
-            else:
-                return {
-                    "message": f"The Fish of the Day for {today} is *{species}*",
-                    "image": image
-                }
-    
-    except Exception as e:
-        log.error(f"Error: {e}")
-        if str(e).startswith("HTTPS"):
-            return "Sorry! I can't seem to access the database right now. Please try again later."
-        else:
-            return "Sorry! There was an internal error handling your request."
-    
-
-def get_random_response(user):
-    if not config.fish_enabled:
-        return "Sorry! The !fish command is not enabled at the moment."
-    try:
-        fish = get_suitable_fish(False)
-        name = fish["name"]
-        species = fish["species"]
-        image = fish["image"]
-        genus = fish["genus"]
-
-        if name:
-            fish_message = f"**{name}** (*{species}*)"
-        else:
-            if genus:
-                fish_message= f"*{species}*, from the family **{genus}**"
-            else:
-                fish_message= f"*{species}*"
+            msg_start = "The global"
         
-        if user:
-            if name and name.lower() == "whale shark":
-                return {
-                    "message": f"Hi <@{user}>! You actually did it! Your random fish is {fish_message}",
-                    "image": image
-                }
-            else:
-                return {
-                    "message": f"Hi <@{user}>! Your random fish is {fish_message}",
-                    "image": image
-                }
+        if name:
+            msg_name = f"**{name}** (*{species}*)"
         else:
-            if name and name.lower() == "whale shark":
-                return {
-                    "message": f"No one will believe you! Your random fish is {fish_message}",
-                    "image": image
-                }
-            else:
-                return {
-                    "message": f"Your random fish is {fish_message}",
-                    "image": image
-                }
-    
+            msg_name = f"*{species}*"
+        message = f"{msg_start} Fish of the Day for {today} is {msg_name} from the family **{genus}**"
+
+        return {
+            "message": message,
+            "image": image
+        }
+
     except Exception as e:
-        log.error(f"Error: {e}")
+        log.error(f"get_fotd_response: {e}")
         if str(e).startswith("HTTPS"):
             return "Sorry! I can't seem to access the database right now. Please try again later."
         else:
             return "Sorry! There was an internal error handling your request."
+    
     
 def get_response(input, user):
     if input[1:] == "fotd":
-        return get_fotd_response()
+        return get_fotd_response(None)
     if input[1:] == "fish":
-        return get_random_response(user)
+        return get_fotd_response(user)
     if input[1:] == "fish-help":
         return """
         Hi! I'm the Fish of the Day bot!
-Here's a list of my commands (replace '!' with '?' if you'd rather I DM you the message):
+Here's a list of my commands:
 **!fish-help** - Displays this message
 **!fotd** - Posts the current Fish of the Day
 **!fish** - Posts a random fish
@@ -253,8 +175,9 @@ The database I use can be found at https://www.fishbase.se/
 """
 
 if __name__ == '__main__':
-    try:
-        read_fotd_json()
-    except:
-        set_fotd()
-    print(get_fotd_response())
+    print(get_fotd_response(None))
+    print(get_fotd_response('monster_misfire'))
+    print(get_fotd_response(None))
+    print(get_fotd_response('hol'))
+    print(get_fotd_response('monster_misfire'))
+    print(get_fotd_response('hol'))

@@ -33,6 +33,8 @@ async def send_message(message: Message, user_message: str) -> None:
     else:
         username = message.author.id
 
+    logging.info(f"User: {username}")
+
 
     try:
         response = get_response(user_message, username)
