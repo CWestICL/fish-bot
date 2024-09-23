@@ -6,6 +6,8 @@ List of commands (replace '!' with '?' to receive response as a DM):
 
 **!fish-help** - Displays the command list
 
-**!fotd** - Posts the current Fish of the Day
+**!fotd** - Posts the current global Fish of the Day
+
+**!myfotd** - Posts your current personal Fish of the Day (Does not work in DMs currently)
 
 **!fish** - Posts a random fish
