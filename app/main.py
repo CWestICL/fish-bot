@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import aiohttp
 import io
 from discord import Intents, Client, Message, File
-from responses import get_response, set_fotd
+from responses import get_response
 
 load_dotenv()
 TOKEN: Final[str] = os.getenv("DISCORD_TOKEN")

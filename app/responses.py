@@ -1,9 +1,7 @@
 from bs4 import BeautifulSoup
 import requests
 from datetime import date
-from dateutil import parser 
 import config
-import json
 import logging
 
 logging.basicConfig(level=logging.INFO, filename="fishbot.log", filemode="w", format="%(asctime)s - %(levelname)s - %(message)s")
@@ -27,9 +25,9 @@ def get_fish(endpoint, user = None):
         log.debug(f"Data: {data}")
     
         fish = {
-            "species": f"{data["genus"]} {data["species"]}",
+            "species": f"{data['genus']} {data['species']}",
             "name": data["name"],
-            "image": f"{config.api_url}{data["imageUrl"]}",
+            "image": f"{config.api_url}{data['imageUrl']}",
             "genus": data["familyCommonName"],
         }
         if not data["name"]:
